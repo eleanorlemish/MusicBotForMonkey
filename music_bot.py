@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import yt_dlp as youtube_dl
 import asyncio
+import random
 
 # Bot setup
 intents = discord.Intents.default()
@@ -16,7 +17,7 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'ytsearch',
-    'cookiefile': '/path/to/your/file',  # Replace with your cookies file path
+    'cookiefile': '/path/to/cookies/file',  # Replace with your cookies file path
     'verbose': True,
     'extract_flat': 'in_playlist',
     'http_headers': {
@@ -128,6 +129,18 @@ async def skip(ctx):
     else:
         await ctx.send("No music is currently playing.")
 
+#Shuffles the current playlist
+@bot.command(name='shuffle', help='Shuffles the current music queue')
+async def shuffle(ctx):
+    global music_queue
+
+    if len(music_queue) > 1:
+        random.shuffle(music_queue)
+        await ctx.send("The music queue has been shuffled!")
+    elif len(music_queue) == 1:
+        await ctx.send("There's only one song in the queue, no need to shuffle.")
+    else:
+        await ctx.send("The queue is empty, nothing to shuffle.")
 
 # Command to stop and clear the queue
 @bot.command(name='stop', help='Stops the music and clears the queue')
@@ -144,5 +157,5 @@ async def stop(ctx):
 
 
 # Run the bot
-TOKEN = "Put your bot token here"  # Replace with your bot token
+TOKEN = "Add your bot token"  # Replace with your bot token
 bot.run(TOKEN)
