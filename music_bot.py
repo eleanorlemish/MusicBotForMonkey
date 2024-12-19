@@ -16,7 +16,9 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'ytsearch',
-    'cookiefile': '/path/to/file',  # Replace with your cookies file path
+    'cookiefile': '/path/to/your/file',  # Replace with your cookies file path
+    'verbose': True,
+    'extract_flat': 'in_playlist',
     'http_headers': {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
     },
@@ -49,9 +51,10 @@ async def join(ctx):
 
 # Command to play a YouTube playlist or video
 @bot.command(name='play', help='Plays a YouTube playlist or video link')
+
 async def play(ctx, *, url: str):
     global music_queue, is_playing
-
+    
     if not ctx.voice_client:
         await ctx.invoke(join)
 
@@ -85,21 +88,36 @@ async def play_next(ctx):
 
     if music_queue:
         is_playing = True
-        current_song = music_queue.pop(0)
+        current_song_url = music_queue.pop(0)
 
-        # Play audio using FFmpeg
-        source = discord.FFmpegPCMAudio(current_song, **ffmpeg_options)
-        ctx.voice_client.play(
-            source,
-            after=lambda _: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
-        )
+        try:
+            # Extract the audio URL using yt-dlp
+            info = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: ytdl.extract_info(current_song_url, download=False)
+            )
 
-        # Send a simple now-playing message
-        await ctx.send("Now playing the next track!")
+            # Get the audio URL from the extracted info
+            audio_url = info.get('url')
+            if not audio_url:
+                await ctx.send("Could not extract audio URL.")
+                is_playing = False
+                return await play_next(ctx)
+
+            # Play the audio
+            source = discord.FFmpegPCMAudio(audio_url, **ffmpeg_options)
+            ctx.voice_client.play(
+                source,
+                after=lambda _: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
+            )
+            await ctx.send(f"Now playing: {info.get('title', 'Unknown track')}")
+
+        except Exception as e:
+            await ctx.send(f"An error occurred while playing: {str(e)}")
+            is_playing = False
+            return await play_next(ctx)
     else:
         is_playing = False
         await ctx.send("The queue is empty.")
-
 
 # Command to skip the current song
 @bot.command(name='skip', help='Skips the current song')
@@ -126,5 +144,5 @@ async def stop(ctx):
 
 
 # Run the bot
-TOKEN = "replace with your own token"  # Replace with your bot token
+TOKEN = "Put your bot token here"  # Replace with your bot token
 bot.run(TOKEN)
